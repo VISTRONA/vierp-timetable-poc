@@ -1,0 +1,205 @@
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Outfit', 'Inter', sans-serif;
+
+  /* EduPlus Campus Core Colors */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-light: #eff6ff;
+  --color-accent: #0284c7;
+
+  --bg-page: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-subtle: #f1f5f9;
+  --bg-sidebar: #0f172a;
+  --bg-sidebar-active: #1e293b;
+
+  --border-color: #cbd5e1;
+  --border-strong: #94a3b8;
+
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --text-inverse: #ffffff;
+
+  /* EduPlus Specific Cell Color Palette */
+  /* Theory: Cream / Soft Amber */
+  --eduplus-theory-bg: #fff8e7;
+  --eduplus-theory-border: #fef08a;
+  --eduplus-theory-text: #78350f;
+
+  /* Lab: Mint Cyan / Soft Teal */
+  --eduplus-lab-bg: #e6f7f5;
+  --eduplus-lab-border: #99f6e4;
+  --eduplus-lab-text: #115e59;
+
+  /* Tutorial: Soft Lavender / Pastel Pink */
+  --eduplus-tut-bg: #fce7f3;
+  --eduplus-tut-border: #fbcfe8;
+  --eduplus-tut-text: #831843;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 10px 25px rgba(15, 23, 42, 0.12);
+}
+
+/* Base Resets */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #f1f5f9;
+  color: var(--text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Layout Grid */
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background-color: #f8fafc;
+}
+
+.page-body {
+  padding: 1.5rem 2rem;
+  flex: 1;
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* EduPlus Cards */
+.vierp-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+/* Typography */
+h1, h2, h3, h4 {
+  font-family: var(--font-heading);
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.page-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.page-subtitle {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  margin-top: 0.15rem;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.55rem 1.15rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.btn-secondary {
+  background-color: var(--bg-surface);
+  border-color: var(--border-strong);
+  color: var(--text-main);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-surface-subtle);
+  border-color: #64748b;
+}
+
+.btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
+/* EduPlus Load Type Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.badge-theory {
+  background-color: var(--eduplus-theory-bg);
+  color: var(--eduplus-theory-text);
+  border: 1px solid var(--eduplus-theory-border);
+}
+
+.badge-lab {
+  background-color: var(--eduplus-lab-bg);
+  color: var(--eduplus-lab-text);
+  border: 1px solid var(--eduplus-lab-border);
+}
+
+.badge-tutorial {
+  background-color: var(--eduplus-tut-bg);
+  color: var(--eduplus-tut-text);
+  border: 1px solid var(--eduplus-tut-border);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

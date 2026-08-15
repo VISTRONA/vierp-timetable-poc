@@ -1,0 +1,12 @@
+{
+  "name": "vierp-sample-generator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node generate_sample.js"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
