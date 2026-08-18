@@ -1,0 +1,129 @@
+# ============================================================
+# VIERP Timetable POC - Root .gitignore
+# ============================================================
+
+
+# ------------------------------------------------------------
+# OS / Editor
+# ------------------------------------------------------------
+
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.iml
+
+
+# ------------------------------------------------------------
+# Environment / Secrets
+# ------------------------------------------------------------
+
+.env
+.env.*
+!.env.example
+
+*.pem
+*.key
+
+
+# ------------------------------------------------------------
+# Backend - Grails / Gradle / Java
+# ------------------------------------------------------------
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Grails generated files
+target/
+out/
+
+# Compiled Java/Groovy
+*.class
+
+# Logs
+*.log
+
+
+# ------------------------------------------------------------
+# Frontend - Vue / Node
+# ------------------------------------------------------------
+
+frontend/vue-app/node_modules/
+frontend/vue-app/dist/
+frontend/vue-app/.vite/
+frontend/vue-app/.cache/
+frontend/vue-app/coverage/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+
+# ------------------------------------------------------------
+# Database
+# ------------------------------------------------------------
+
+# Local database files
+*.db
+*.sqlite
+*.sqlite3
+
+# MySQL dumps - ignore accidental local dumps
+*.sql.gz
+
+# Keep intentional schema/seed files
+!database/schema.sql
+!database/seed.sql
+
+
+# ------------------------------------------------------------
+# Runtime Storage
+# ------------------------------------------------------------
+
+# Uploaded Excel files generated while running the application
+storage/uploads/*
+
+# Generated division JSON files
+storage/timetable-json/*
+
+# Keep the directories in Git
+!storage/uploads/.gitkeep
+!storage/timetable-json/.gitkeep
+
+
+# ------------------------------------------------------------
+# Temporary / Generated Files
+# ------------------------------------------------------------
+
+tmp/
+temp/
+.cache/
+
+*.tmp
+*.bak
+*.orig
+
+
+# ------------------------------------------------------------
+# Test / Coverage
+# ------------------------------------------------------------
+
+coverage/
+.pytest_cache/
+__pycache__/
+
+
+# ------------------------------------------------------------
+# Local configuration
+# ------------------------------------------------------------
+
+application-local.yml
+application-local.properties
+
+config-local/
