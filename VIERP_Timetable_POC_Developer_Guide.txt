@@ -1,0 +1,1051 @@
+VIERP TIMETABLE POC
+Complete Setup & Developer Guide
+================================
+
+PURPOSE
+-------
+This project automates timetable data entry into the VIERP system.
+
+Instead of manually entering every timetable entry through dropdowns,
+the user uploads a timetable Excel file. The system validates it,
+converts it into structured records, stores the records in MySQL,
+generates JSON files for each division, and exposes APIs consumed by
+the Vue frontend.
+
+ARCHITECTURE
+------------
+Excel
+  -> Vue Frontend
+  -> Grails Backend
+  -> storage/uploads/
+  -> Python DBMS Pipeline
+  -> MySQL
+  -> storage/timetable-json/
+  -> Grails API
+  -> Vue Frontend
+
+TECH STACK
+----------
+Frontend : Vue.js + Vite
+Backend  : Apache Grails 7.1.5
+Java     : 17
+Database : MySQL
+Pipeline : Python 3
+Excel    : openpyxl
+API      : REST/JSON
+Build    : Gradle
+Version  : Git
+
+
+1. REQUIREMENTS
+---------------
+
+Install:
+
+- Git
+- Java 17
+- MySQL 8.x
+- Python 3.10+
+- Node.js LTS
+- npm
+
+IMPORTANT:
+Use Java 17. Do NOT use Java 26 with this Grails project.
+
+Check:
+
+    java -version
+    python3 --version
+    node --version
+    npm --version
+    mysql --version
+
+
+2. CLONE THE PROJECT
+--------------------
+
+    git clone <REPOSITORY_URL>
+    cd vierp-timetable-poc-2
+
+Check the branch:
+
+    git branch
+
+For development:
+
+    git checkout develop
+
+
+3. PROJECT STRUCTURE
+--------------------
+
+vierp-timetable-poc-2/
+|
++-- backend/
+|   +-- grails-app/
+|   |   +-- controllers/backend/
+|   |   +-- services/backend/
+|   +-- grails-app/conf/UrlMappings.groovy
+|   +-- build.gradle
+|   +-- gradlew
+|
++-- database/
+|   +-- schema.sql
+|   +-- pipeline/
+|       +-- excel_reader.py
+|       +-- validator.py
+|       +-- transformer.py
+|       +-- mysql_loader.py
+|       +-- timetable_repository.py
+|       +-- json_generator.py
+|       +-- run_pipeline.py
+|       +-- requirements.txt
+|       +-- .env.example
+|
++-- frontend/
+|   +-- src/
+|   +-- public/
+|   +-- package.json
+|   +-- vite.config.js
+|
++-- storage/
+|   +-- uploads/
+|   +-- timetable-json/
+|
++-- sample-data/
++-- docs/
++-- README.md
++-- LICENSE
++-- .gitignore
+
+
+4. DATABASE SETUP
+-----------------
+
+The database MUST be created before running the Python pipeline.
+
+Database:
+
+    vierp_timetable_poc
+
+The repository contains:
+
+    database/schema.sql
+
+Run:
+
+    mysql -u root -p < database/schema.sql
+
+Verify:
+
+    mysql -u root -p
+
+Then:
+
+    SHOW DATABASES;
+    USE vierp_timetable_poc;
+    SHOW TABLES;
+
+Expected tables:
+
+    divisions
+    timetable_entries
+
+
+5. DATABASE SCHEMA
+------------------
+
+The current database contains:
+
+    CREATE DATABASE IF NOT EXISTS vierp_timetable_poc;
+
+    USE vierp_timetable_poc;
+
+    CREATE TABLE IF NOT EXISTS divisions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        division_name VARCHAR(100) NOT NULL UNIQUE
+    );
+
+    CREATE TABLE IF NOT EXISTS timetable_entries (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        division_id INT NOT NULL,
+        subject VARCHAR(100) NOT NULL,
+        student_group VARCHAR(100) NOT NULL,
+        teacher VARCHAR(255) NOT NULL,
+        room VARCHAR(100) NOT NULL,
+        day VARCHAR(20) NOT NULL,
+        start_time TIME NOT NULL,
+        end_time TIME NOT NULL,
+        periods INT NOT NULL,
+        type VARCHAR(20) NOT NULL,
+        CONSTRAINT fk_timetable_division
+            FOREIGN KEY (division_id)
+            REFERENCES divisions(id)
+            ON DELETE CASCADE
+    );
+
+Do not change the schema casually. If the schema changes, also update
+database/schema.sql and the database documentation.
+
+
+6. PYTHON ENVIRONMENT
+---------------------
+
+    cd database/pipeline
+
+Create a virtual environment:
+
+    python3 -m venv .venv
+
+Activate on Linux/macOS:
+
+    source .venv/bin/activate
+
+Windows:
+
+    .venv\Scripts\activate
+
+Install dependencies:
+
+    pip install -r requirements.txt
+
+
+7. MYSQL PASSWORD
+-----------------
+
+Create the environment file:
+
+    cp .env.example .env
+
+Edit it:
+
+    nano .env
+
+Set:
+
+    password=YOUR_MYSQL_PASSWORD
+
+IMPORTANT:
+NEVER commit .env.
+
+The repository should contain .env.example, not your actual .env.
+
+
+8. PYTHON PIPELINE
+------------------
+
+The main pipeline is:
+
+    database/pipeline/run_pipeline.py
+
+It performs:
+
+    1. Read Excel
+    2. Validate Excel
+    3. Transform records
+    4. Import into MySQL
+    5. Generate JSON files
+
+Pipeline modules:
+
+    excel_reader.py
+        Reads timetable Excel data.
+
+    validator.py
+        Validates columns, records and schedule.
+
+    transformer.py
+        Converts records into database format.
+
+    mysql_loader.py
+        Imports data into MySQL.
+
+    timetable_repository.py
+        Reads divisions and timetable records from MySQL.
+
+    json_generator.py
+        Generates division JSON files.
+
+    run_pipeline.py
+        Controls the complete process.
+
+
+9. RUN PIPELINE MANUALLY
+------------------------
+
+From database/pipeline:
+
+    python3 run_pipeline.py <path-to-excel-file>
+
+Example:
+
+    python3 run_pipeline.py ../../storage/uploads/timetable_list.xlsx
+
+If no file is supplied:
+
+    python3 run_pipeline.py
+
+the pipeline searches storage/uploads/ for an .xlsx file.
+
+
+10. IMPORTANT: UPLOAD REPLACES OLD DATA
+---------------------------------------
+
+The current POC treats each successful timetable upload as a complete
+replacement of the previous timetable.
+
+The database loader removes existing:
+
+    timetable_entries
+    divisions
+
+and then imports the new timetable.
+
+Therefore:
+
+    Old timetable + New upload = New timetable
+
+The system does NOT append timetable records.
+
+After successful database import, old JSON files are removed before
+fresh division JSON files are generated.
+
+This prevents stale divisions from appearing in the API.
+
+Example:
+
+Previous upload:
+    CIVIL
+    ETC A
+    CSE A
+
+New upload:
+    CIVIL
+
+Expected JSON output:
+    CIVIL.json
+
+Only the new timetable dataset should remain.
+
+
+11. START GRAILS BACKEND
+------------------------
+
+Open another terminal.
+
+    cd backend
+
+Check Java:
+
+    java -version
+
+Use Java 17.
+
+Start Grails:
+
+    ./gradlew bootRun
+
+Windows:
+
+    gradlew.bat bootRun
+
+Backend:
+
+    http://localhost:8080
+
+
+12. BACKEND API
+---------------
+
+Current endpoints:
+
+    GET  /api/health
+
+    POST /api/timetable/upload
+
+    GET  /api/timetable/classes
+
+    GET  /api/timetable/{className}
+
+
+13. HEALTH CHECK
+----------------
+
+With Grails running:
+
+    curl http://localhost:8080/api/health
+
+
+14. UPLOAD API
+--------------
+
+Endpoint:
+
+    POST /api/timetable/upload
+
+Request type:
+
+    multipart/form-data
+
+File field:
+
+    file
+
+Example:
+
+    curl -i -X POST       -F "file=@timetable_list.xlsx"       http://localhost:8080/api/timetable/upload
+
+The backend:
+
+    1. checks that a file was supplied
+    2. checks that it is not empty
+    3. checks maximum size
+    4. checks .xlsx extension
+    5. saves the file
+    6. starts the Python pipeline
+    7. validates the Excel
+    8. imports the data into MySQL
+    9. generates fresh JSON files
+    10. returns the result
+
+Current maximum upload size:
+
+    10 MB
+
+
+15. CLASS LIST API
+------------------
+
+Endpoint:
+
+    GET /api/timetable/classes
+
+Test:
+
+    curl http://localhost:8080/api/timetable/classes
+
+Example:
+
+    {
+      "success": true,
+      "data": [
+        "CIVIL",
+        "CSE A",
+        "ETC A"
+      ]
+    }
+
+The class list is currently generated from the JSON files.
+
+
+16. TIMETABLE API
+-----------------
+
+Endpoint:
+
+    GET /api/timetable/{className}
+
+Example:
+
+    curl "http://localhost:8080/api/timetable/ETC%20A"
+
+Example response:
+
+    {
+      "success": true,
+      "data": {
+        "division": "ETC A",
+        "entries": [
+          {
+            "division": "ETC A",
+            "subject": "GP-2-LAB",
+            "student_group": "B1",
+            "teacher": "SAMPADA VIRAJ DRAVID",
+            "room": "D313",
+            "day": "Monday",
+            "start_time": "8:00:00",
+            "end_time": "9:00:00",
+            "periods": 2,
+            "type": "LAB"
+          }
+        ]
+      }
+    }
+
+
+17. FRONTEND SETUP
+------------------
+
+Open another terminal.
+
+    cd frontend
+
+Install dependencies:
+
+    npm install
+
+Start Vue:
+
+    npm run dev
+
+Vite normally runs at:
+
+    http://localhost:5173
+
+
+18. FRONTEND API PROXY
+----------------------
+
+frontend/vite.config.js proxies /api requests to Grails.
+
+Frontend should call:
+
+    /api/timetable/classes
+
+instead of directly calling:
+
+    http://localhost:8080/api/timetable/classes
+
+The Vite development server forwards the request to port 8080.
+
+
+19. RUN THE COMPLETE SYSTEM
+---------------------------
+
+Use three terminals.
+
+TERMINAL 1 - MySQL
+    Make sure MySQL is running.
+
+TERMINAL 2 - Grails
+    cd backend
+    ./gradlew bootRun
+
+TERMINAL 3 - Vue
+    cd frontend
+    npm run dev
+
+Open:
+
+    http://localhost:5173
+
+
+20. USING THE APPLICATION
+-------------------------
+
+1. Start MySQL.
+2. Start Grails.
+3. Start Vue.
+4. Open the Vue URL.
+5. Select a division/class.
+6. The frontend requests its timetable.
+7. The timetable is displayed.
+
+To upload:
+
+1. Click "Upload Timetable".
+2. Select the .xlsx file.
+3. Upload it.
+4. Backend validates the file.
+5. Python pipeline processes it.
+6. MySQL is replaced with the new dataset.
+7. Fresh JSON files are generated.
+8. Frontend refreshes available divisions.
+9. Select a division to view its timetable.
+
+
+21. VIERP-STYLE FRONTEND
+------------------------
+
+The frontend is intentionally designed to resemble the existing VIERP
+timetable page.
+
+It contains:
+
+    - VIT/institution header
+    - user/profile area
+    - breadcrumb
+    - academic year
+    - semester
+    - division selection
+    - timetable information
+    - weekly timetable grid
+    - timetable cards
+    - upload action
+
+The main improvement is that timetable data comes from the automated
+Excel upload pipeline instead of manual dropdown entry.
+
+
+22. DATA MODEL
+--------------
+
+Each timetable entry currently contains:
+
+    division
+    subject
+    student_group
+    teacher
+    room
+    day
+    start_time
+    end_time
+    periods
+    type
+
+
+23. FILE RESPONSIBILITIES
+-------------------------
+
+BACKEND
+
+TimetableController.groovy
+    HTTP endpoints for upload, class list and timetable retrieval.
+
+TimetableUploadService.groovy
+    Upload validation and pipeline orchestration.
+
+FileStorageService.groovy
+    Saves uploaded Excel files.
+
+TimetablePipelineService.groovy
+    Starts the Python pipeline.
+
+TimetableJsonService.groovy
+    Reads generated division JSON files.
+
+
+DATABASE / PYTHON
+
+excel_reader.py
+    Reads Excel.
+
+validator.py
+    Validates timetable data.
+
+transformer.py
+    Transforms records.
+
+mysql_loader.py
+    Writes records to MySQL.
+
+timetable_repository.py
+    Reads timetable data from MySQL.
+
+json_generator.py
+    Creates division JSON.
+
+run_pipeline.py
+    Runs the complete pipeline.
+
+
+FRONTEND
+
+App.vue
+    Main timetable UI and API interaction.
+
+main.js
+    Starts Vue.
+
+main.css
+    VIERP-style UI.
+
+vite.config.js
+    Vite configuration and API proxy.
+
+
+24. DEVELOPMENT RULES
+---------------------
+
+1. NEVER commit secrets.
+
+Never commit:
+
+    .env
+    passwords
+    API keys
+    credentials
+
+2. Avoid committing generated files:
+
+    storage/uploads/*.xlsx
+    storage/timetable-json/*.json
+    frontend/node_modules/
+    backend/build/
+
+3. Keep frontend/backend/database responsibilities separate.
+
+4. If an API changes, update docs/api-contract.md.
+
+5. If database structure changes, update database/schema.sql and the
+   database documentation.
+
+6. If JSON changes, update json_generator.py, docs/json-format.md and
+   frontend/API handling as necessary.
+
+7. Test the complete flow after major changes.
+
+
+25. TESTING
+-----------
+
+PIPELINE:
+
+    cd database/pipeline
+    source .venv/bin/activate
+    python3 run_pipeline.py <excel-file>
+
+Then verify:
+
+    mysql -u root -p
+
+    USE vierp_timetable_poc;
+
+    SELECT COUNT(*) FROM timetable_entries;
+
+    SELECT * FROM divisions;
+
+
+BACKEND:
+
+    curl http://localhost:8080/api/health
+
+    curl http://localhost:8080/api/timetable/classes
+
+    curl "http://localhost:8080/api/timetable/ETC%20A"
+
+    curl -i -X POST       -F "file=@timetable_list.xlsx"       http://localhost:8080/api/timetable/upload
+
+
+FRONTEND:
+
+Check:
+
+    - page loads
+    - divisions load
+    - division can be selected
+    - timetable loads
+    - upload modal opens
+    - Excel can be selected
+    - upload succeeds
+    - timetable refreshes
+
+
+26. COMMON PROBLEMS
+-------------------
+
+Java/Grails error involving unsupported class version:
+    Check java -version and use Java 17.
+
+Python cannot connect to MySQL:
+    Check MySQL is running.
+    Check database exists.
+    Check database/pipeline/.env.
+    Check MySQL username/password.
+
+Missing Python module:
+    cd database/pipeline
+    source .venv/bin/activate
+    pip install -r requirements.txt
+
+Upload pipeline failure:
+    Check the Grails terminal.
+    Run the Python pipeline manually to see the detailed error.
+
+Frontend cannot load timetable:
+    Check Grails is running on port 8080.
+    Check Vue is running on port 5173.
+    Check vite.config.js proxy.
+    Test /api/timetable/classes directly.
+
+Old divisions appearing:
+    Check storage/timetable-json/.
+    Run the pipeline again.
+    Confirm the database import completed successfully.
+
+
+27. GIT WORKFLOW
+---------------
+
+Always work from the project root:
+
+    cd vierp-timetable-poc-2
+
+Update development:
+
+    git checkout develop
+    git pull origin develop
+
+Create a feature branch:
+
+    git checkout -b feature/<feature-name>
+
+Examples:
+
+    feature/frontend-upload
+    feature/excel-validation
+    feature/api-error-handling
+
+After changes:
+
+    git status
+    git diff
+
+Stage:
+
+    git add .
+
+Verify:
+
+    git status
+
+Commit:
+
+    git commit -m "Add timetable upload UI"
+
+Push:
+
+    git push -u origin feature/<feature-name>
+
+Then create a Pull Request into the team's development branch.
+
+
+28. IMPORTANT GIT CHECK
+-----------------------
+
+Before committing, run:
+
+    git status
+
+Make sure you do NOT see:
+
+    database/pipeline/.env
+    storage/uploads/*.xlsx
+    storage/timetable-json/*.json
+    frontend/node_modules/
+    backend/build/
+
+If something is staged accidentally:
+
+    git restore --staged <file>
+
+Then check again.
+
+
+29. CURRENT POC LIMITATIONS
+---------------------------
+
+This is a proof of concept.
+
+Before production, the following should be considered:
+
+    - authentication
+    - authorization / roles
+    - stronger file/content validation
+    - upload history
+    - audit logs
+    - better error reporting
+    - asynchronous processing for large files
+    - production file storage
+    - upload filename collision handling
+    - path safety
+    - timetable conflict detection
+    - database indexing
+    - API security
+    - better multi-period timetable rendering
+    - deployment configuration
+    - direct integration with actual VIERP/Eduplus backend
+
+Do not introduce production architecture changes without agreement
+from the project team.
+
+
+30. FUTURE PRODUCTION DIRECTION
+------------------------------
+
+Current POC:
+
+    Vue
+      |
+      v
+    Grails
+      |
+      v
+    Python pipeline
+      |
+      +--> MySQL
+      |
+      +--> JSON
+      |
+      v
+    Grails API
+      |
+      v
+    Vue
+
+Possible production direction:
+
+    VIERP Frontend
+          |
+          v
+    VIERP/Grails Backend
+          |
+          v
+    Timetable Processing Service
+          |
+          +--> Validation
+          +--> Database
+          +--> Audit Log
+          +--> Import Result
+
+The exact production integration depends on the actual VIERP/Eduplus
+source code, database and APIs.
+
+
+31. QUICK START
+---------------
+
+For a new developer:
+
+    git clone <REPOSITORY_URL>
+    cd vierp-timetable-poc-2
+
+Create database:
+
+    mysql -u root -p < database/schema.sql
+
+Configure Python:
+
+    cd database/pipeline
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements.txt
+    cp .env.example .env
+
+Edit .env:
+
+    password=YOUR_MYSQL_PASSWORD
+
+Start backend in another terminal:
+
+    cd backend
+    ./gradlew bootRun
+
+Start frontend in another terminal:
+
+    cd frontend
+    npm install
+    npm run dev
+
+Open:
+
+    http://localhost:5173
+
+
+32. QUICK COMMAND REFERENCE
+---------------------------
+
+DATABASE:
+
+    mysql -u root -p < database/schema.sql
+
+PYTHON:
+
+    cd database/pipeline
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements.txt
+    python3 run_pipeline.py <excel-file>
+
+BACKEND:
+
+    cd backend
+    ./gradlew bootRun
+
+FRONTEND:
+
+    cd frontend
+    npm install
+    npm run dev
+
+HEALTH:
+
+    curl http://localhost:8080/api/health
+
+CLASSES:
+
+    curl http://localhost:8080/api/timetable/classes
+
+TIMETABLE:
+
+    curl "http://localhost:8080/api/timetable/ETC%20A"
+
+UPLOAD:
+
+    curl -i -X POST       -F "file=@timetable_list.xlsx"       http://localhost:8080/api/timetable/upload
+
+GIT:
+
+    git status
+    git pull
+    git checkout -b feature/<name>
+    git add .
+    git commit -m "<message>"
+    git push -u origin <branch-name>
+
+
+33. NEW DEVELOPER CHECKLIST
+---------------------------
+
+[ ] Repository cloned
+[ ] Java 17 installed
+[ ] Python installed
+[ ] Node.js/npm installed
+[ ] MySQL installed and running
+[ ] Database created with database/schema.sql
+[ ] divisions table exists
+[ ] timetable_entries table exists
+[ ] Python virtual environment created
+[ ] Python requirements installed
+[ ] database/pipeline/.env created
+[ ] MySQL password configured
+[ ] Grails backend starts
+[ ] /api/health works
+[ ] Vue frontend starts
+[ ] Frontend opens on localhost:5173
+[ ] /api/timetable/classes works
+[ ] Test Excel uploads successfully
+[ ] MySQL contains timetable records
+[ ] JSON files are generated
+[ ] Frontend displays timetable
+[ ] .env is NOT committed
+[ ] Generated files are NOT committed
+
+
+34. PROJECT PRINCIPLE
+---------------------
+
+The main objective is:
+
+    "Upload the timetable once instead of manually entering every
+     timetable entry into VIERP."
+
+Keep the system modular:
+
+    Frontend
+        -> user interaction
+
+    Grails Backend
+        -> API and orchestration
+
+    Python Pipeline
+        -> Excel processing and transformation
+
+    MySQL
+        -> structured timetable storage
+
+    JSON
+        -> simple read format for the current POC
+
+
+END OF GUIDE
