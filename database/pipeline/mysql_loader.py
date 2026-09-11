@@ -3,17 +3,20 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
 password_U = os.getenv("password")
 def get_connection():
-
     return mysql.connector.connect(
-        host="localhost",
-        port=3306,
-        user="root",
-        password=password_U,
-        database="vierp_timetable_poc"
+        host=os.getenv("MYSQL_HOST", "localhost"),
+        port=int(os.getenv("MYSQL_PORT", "3306")),
+        user=os.getenv("MYSQL_USER", "root"),
+        password=os.getenv("MYSQL_PASSWORD") or os.getenv("password"),
+        database=os.getenv(
+            "MYSQL_DATABASE",
+            "vierp_timetable_poc"
+        )
     )
-
 
 def get_or_create_division(cursor, division_name):
 
