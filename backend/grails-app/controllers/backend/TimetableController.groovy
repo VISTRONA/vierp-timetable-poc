@@ -95,4 +95,89 @@ class TimetableController {
                 ])
         )
     }
+    def getFaculties() {
+
+        List<String> faculties = timetableJsonService.getFaculties()
+
+        render(
+                status: 200,
+                contentType: 'application/json',
+                text: groovy.json.JsonOutput.toJson([
+                        success: true,
+                        data: faculties
+                ])
+        )
+    }
+    def getClassrooms() {
+        List<String> classrooms = timetableJsonService.getClassrooms()
+
+        render(
+                status: 200,
+                contentType: 'application/json',
+                text: groovy.json.JsonOutput.toJson([
+                success: true,
+                data: classrooms
+                ])
+        )
+    }
+
+
+    def getFacultyTimetable(String facultyName) {
+
+        Map timetable =
+                timetableJsonService.getFacultyTimetable(facultyName)
+
+        if (timetable == null) {
+
+                render(
+                        status: 404,
+                        contentType: 'application/json',
+                        text: groovy.json.JsonOutput.toJson([
+                                success: false,
+                                error: [
+                                        code: 'FACULTY_TIMETABLE_NOT_FOUND',
+                                        message: "No timetable found for faculty '${facultyName}'."
+                                ]
+                        ])
+                )
+
+                return
+        }
+
+        render(
+                status: 200,
+                contentType: 'application/json',
+                text: groovy.json.JsonOutput.toJson([
+                        success: true,
+                        data: timetable
+                ])
+        )
+    }
+    def getClassroomTimetable(String classroomName) {
+        Map timetable = timetableJsonService.getClassroomTimetable(classroomName)
+
+        if (timetable == null) {
+                render(
+                status: 404,
+                contentType: 'application/json',
+                text: groovy.json.JsonOutput.toJson([
+                        success: false,
+                        error: [
+                        code: 'CLASSROOM_TIMETABLE_NOT_FOUND',
+                        message: "No timetable found for classroom '${classroomName}'."
+                        ]
+                ])
+                )
+                return
+        }
+
+        render(
+                status: 200,
+                contentType: 'application/json',
+                text: groovy.json.JsonOutput.toJson([
+                success: true,
+                data: timetable
+                ])
+        )
+   }
 }

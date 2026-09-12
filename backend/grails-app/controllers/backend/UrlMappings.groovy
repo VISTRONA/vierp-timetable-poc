@@ -19,11 +19,48 @@ class UrlMappings {
                 action: "upload",
                 method: "POST"
         )
+
+        // =========================
+        // Division APIs
+        // =========================
+
         "/api/timetable/classes"(
-                controller:"timetable",
-                action:"getClasses",
-                method:"GET"
+                controller: "timetable",
+                action: "getClasses",
+                method: "GET"
         )
+
+        // =========================
+        // Faculty APIs
+        // =========================
+
+        "/api/faculties"(
+                controller: "timetable",
+                action: "getFaculties",
+                method: "GET"
+        )
+
+        "/api/faculties/$facultyName"(
+                controller: "timetable",
+                action: "getFacultyTimetable",
+                method: "GET"
+        )
+
+        "/api/classrooms"(
+            controller: "timetable",
+            action: "getClassrooms",
+            method: "GET"
+        )
+
+        "/api/classrooms/$classroomName"(
+            controller: "timetable",
+            action: "getClassroomTimetable",
+            method: "GET"
+        )
+
+        // =========================
+        // Division timetable
+        // =========================
 
         "/api/timetable/$className"(
                 controller: "timetable",

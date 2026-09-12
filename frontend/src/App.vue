@@ -7,6 +7,14 @@ const semester = ref('1')
 const divisions = ref([])
 const selectedDivision = ref('')
 
+const faculties = ref([])
+const selectedFaculty = ref('')
+
+const classrooms = ref([])
+const selectedClassroom = ref('')
+
+const viewMode = ref('division')
+
 const timetable = ref(null)
 
 const loadingClasses = ref(false)
@@ -69,6 +77,50 @@ async function loadClasses() {
   }
 }
 
+async function loadFaculties() {
+  try {
+    const response = await fetch('/api/faculties')
+    const result = await response.json()
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || 'Unable to load faculties.')
+    }
+
+    faculties.value = result.data || []
+
+    if (
+      faculties.value.length > 0 &&
+      !faculties.value.includes(selectedFaculty.value)
+    ) {
+      selectedFaculty.value = faculties.value[0]
+    }
+  } catch (error) {
+    errorMessage.value = error.message
+  }
+}
+
+async function loadClassrooms() {
+  try {
+    const response = await fetch('/api/classrooms')
+    const result = await response.json()
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || 'Unable to load classrooms.')
+    }
+
+    classrooms.value = result.data || []
+
+    if (
+      classrooms.value.length > 0 &&
+      !classrooms.value.includes(selectedClassroom.value)
+    ) {
+      selectedClassroom.value = classrooms.value[0]
+    }
+  } catch (error) {
+    errorMessage.value = error.message
+  }
+}
+
 async function loadTimetable() {
   if (!selectedDivision.value) {
     timetable.value = null
@@ -98,8 +150,97 @@ async function loadTimetable() {
   }
 }
 
+async function loadFacultyTimetable() {
+  if (!selectedFaculty.value) {
+    timetable.value = null
+    return
+  }
+
+  loadingTimetable.value = true
+  errorMessage.value = ''
+
+  try {
+    const response = await fetch(
+      `/api/faculties/${encodeURIComponent(selectedFaculty.value)}`
+    )
+
+    const result = await response.json()
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.error?.message || 'Unable to load faculty timetable.'
+      )
+    }
+
+    timetable.value = result.data
+  } catch (error) {
+    timetable.value = null
+    errorMessage.value = error.message
+  } finally {
+    loadingTimetable.value = false
+  }
+}
+
+async function loadClassroomTimetable() {
+  if (!selectedClassroom.value) {
+    timetable.value = null
+    return
+  }
+
+  loadingTimetable.value = true
+  errorMessage.value = ''
+
+  try {
+    const response = await fetch(
+      `/api/classrooms/${encodeURIComponent(selectedClassroom.value)}`
+    )
+
+    const result = await response.json()
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.error?.message || 'Unable to load classroom timetable.'
+      )
+    }
+
+    timetable.value = result.data
+  } catch (error) {
+    timetable.value = null
+    errorMessage.value = error.message
+  } finally {
+    loadingTimetable.value = false
+  }
+}
+
 function handleDivisionChange() {
   loadTimetable()
+}
+
+function handleFacultyChange() {
+  loadFacultyTimetable()
+}
+
+function handleClassroomChange() {
+  loadClassroomTimetable()
+}
+
+function handleViewModeChange() {
+  timetable.value = null
+  errorMessage.value = ''
+
+  if (viewMode.value === 'division') {
+    if (selectedDivision.value) {
+      loadTimetable()
+    }
+  } else if (viewMode.value === 'faculty') {
+    if (selectedFaculty.value) {
+      loadFacultyTimetable()
+    }
+  } else if (viewMode.value === 'classroom') {
+    if (selectedClassroom.value) {
+      loadClassroomTimetable()
+    }
+  }
 }
 
 function openUploadModal() {
@@ -242,6 +383,52 @@ function getEntries(day, slotIndex) {
   })
 }
 
+
+
+function getClassroomEntry(day, slotIndex) {
+  const slot = slots[slotIndex]
+
+  const slotStart = timeToMinutes(slot.split('-')[0])
+
+  return (
+    timetable.value?.entries?.find((entry) => {
+      if (entry.day !== day) return false
+      if (entry.room !== selectedClassroom.value) return false
+
+      const entryStart = timeToMinutes(entry.start_time)
+
+      return entryStart === slotStart
+    }) || null
+  )
+}
+
+function getClassroomRowSpan(entry) {
+  if (!entry) return 1
+
+  const start = timeToMinutes(entry.start_time)
+  const end = timeToMinutes(entry.end_time)
+
+  return Math.max(1, Math.ceil((end - start) / 60))
+}
+
+function isClassroomSlotCovered(day, slotIndex) {
+  const slot = slots[slotIndex]
+
+  const currentStart = timeToMinutes(slot.split('-')[0])
+
+  return (
+    timetable.value?.entries?.some((entry) => {
+      if (entry.day !== day) return false
+      if (entry.room !== selectedClassroom.value) return false
+
+      const start = timeToMinutes(entry.start_time)
+      const end = timeToMinutes(entry.end_time)
+
+      return start < currentStart && currentStart < end
+    }) || false
+  )
+}
+
 function getCardClass(entry) {
   const type = String(entry?.type || '').toUpperCase()
 
@@ -252,12 +439,22 @@ function getCardClass(entry) {
   }
 }
 
-const divisionLabel = computed(() => {
+const timetableLabel = computed(() => {
+  if (viewMode.value === 'faculty') {
+    return timetable.value?.faculty || selectedFaculty.value || '-'
+  }
+
+  if (viewMode.value === 'classroom') {
+    return timetable.value?.classroom || selectedClassroom.value || '-'
+  }
+
   return timetable.value?.division || selectedDivision.value || '-'
 })
 
 onMounted(async () => {
   await loadClasses()
+  await loadFaculties()
+  await loadClassrooms()
 
   if (selectedDivision.value) {
     await loadTimetable()
@@ -342,24 +539,19 @@ onMounted(async () => {
       <section class="controls">
 
         <div class="filter">
-          <label>Academic Year</label>
+          <label>View</label>
 
-          <select v-model="academicYear">
-            <option>2026-27</option>
-            <option>2025-26</option>
+          <select
+            v-model="viewMode"
+            @change="handleViewModeChange"
+          >
+            <option value="division">Division</option>
+            <option value="faculty">Faculty</option>
+            <option value="classroom">Classroom</option>
           </select>
         </div>
 
-        <div class="filter">
-          <label>Semester</label>
-
-          <select v-model="semester">
-            <option>1</option>
-            <option>2</option>
-          </select>
-        </div>
-
-        <div class="filter">
+        <div class="filter" v-if="viewMode === 'division'">
           <label>Division / Class</label>
 
           <select
@@ -377,6 +569,50 @@ onMounted(async () => {
               :value="division"
             >
               {{ division }}
+            </option>
+          </select>
+        </div>
+
+        <div class="filter" v-if="viewMode === 'faculty'">
+          <label>Faculty</label>
+
+          <select
+            v-model="selectedFaculty"
+            @change="handleFacultyChange"
+            :disabled="faculties.length === 0"
+          >
+            <option value="" disabled>
+              Select Faculty
+            </option>
+
+            <option
+              v-for="faculty in faculties"
+              :key="faculty"
+              :value="faculty"
+            >
+              {{ faculty }}
+            </option>
+          </select>
+        </div>
+
+        <div class="filter" v-if="viewMode === 'classroom'">
+          <label>Classroom</label>
+
+          <select
+            v-model="selectedClassroom"
+            @change="handleClassroomChange"
+            :disabled="classrooms.length === 0"
+          >
+            <option value="" disabled>
+              Select Classroom
+            </option>
+
+            <option
+              v-for="classroom in classrooms"
+              :key="classroom"
+              :value="classroom"
+            >
+              {{ classroom }}
             </option>
           </select>
         </div>
@@ -420,8 +656,14 @@ onMounted(async () => {
       <!-- TIMETABLE INFO -->
       <section class="timetable-info">
         <div>
-          Division :
-          <strong>{{ divisionLabel }}</strong>
+          {{
+            viewMode === 'faculty'
+              ? 'Faculty :'
+              : viewMode === 'classroom'
+                ? 'Classroom :'
+                : 'Division :'
+          }}
+          <strong>{{ timetableLabel }}</strong>
         </div>
 
         <div>
@@ -448,7 +690,10 @@ onMounted(async () => {
         v-else-if="!timetable"
         class="empty-state"
       >
-        Select a division to view its timetable.
+        {{ viewMode === 'faculty'
+          ? 'Select a faculty to view their timetable.'
+          : 'Select a division to view its timetable.'
+        }}
       </div>
 
       <!-- TIMETABLE -->
@@ -484,50 +729,105 @@ onMounted(async () => {
                 {{ time }}
               </td>
 
-              <td
-                v-for="day in days"
-                :key="day"
-                class="day-cell"
-              >
+              <template v-for="day in days" :key="day">
 
-                <div
-                  v-for="entry in getEntries(day, slotIndex)"
-                  :key="`${entry.division}-${entry.student_group}-${entry.subject}-${entry.teacher}-${entry.room}-${entry.start_time}-${entry.end_time}`"
-                  class="class-card"
-                  :class="getCardClass(entry)"
+                <!-- NORMAL DIVISION / FACULTY VIEW -->
+                <td
+                  v-if="viewMode !== 'classroom'"
+                  class="day-cell"
                 >
 
-                  <div class="teacher">
-                    {{ entry.teacher }}
+                  <div
+                    v-for="entry in getEntries(day, slotIndex)"
+                    :key="`${entry.division}-${entry.student_group}-${entry.subject}-${entry.teacher}-${entry.room}-${entry.start_time}-${entry.end_time}`"
+                    class="class-card"
+                    :class="getCardClass(entry)"
+                  >
+
+                    <div class="teacher">
+                      {{ entry.teacher }}
+                    </div>
+
+                    <div class="subject">
+                      {{ entry.subject }}
+                    </div>
+
+                    <div
+                      v-if="entry.student_group"
+                      class="student-group"
+                    >
+                      {{ entry.student_group }}
+                    </div>
+
+                    <div class="type">
+                      {{ entry.type }}
+                    </div>
+
+                    <div class="room">
+                      {{ entry.room }}
+                    </div>
+
                   </div>
 
-                  <div class="subject">
-                    {{ entry.subject }}
-                  </div>
+                </td>
+
+
+                <!-- CLASSROOM VIEW -->
+                <td
+                  v-else-if="!isClassroomSlotCovered(day, slotIndex)"
+                  class="day-cell classroom-cell"
+                  :rowspan="
+                    getClassroomRowSpan(
+                      getClassroomEntry(day, slotIndex)
+                    )
+                  "
+                >
 
                   <div
-                    v-if="entry.student_group"
-                    class="student-group"
+                    v-if="getClassroomEntry(day, slotIndex)"
+                    class="class-card"
+                    :class="getCardClass(getClassroomEntry(day, slotIndex))"
                   >
-                    {{ entry.student_group }}
+
+                    <div class="teacher">
+                      {{ getClassroomEntry(day, slotIndex).division }}
+                    </div>
+
+                    <div class="subject">
+                      {{ getClassroomEntry(day, slotIndex).subject }}
+                    </div>
+
+                    <div
+                      v-if="getClassroomEntry(day, slotIndex).teacher"
+                      class="teacher"
+                    >
+                      {{ getClassroomEntry(day, slotIndex).teacher }}
+                    </div>
+
+                    <div
+                      v-if="getClassroomEntry(day, slotIndex).student_group"
+                      class="student-group"
+                    >
+                      {{ getClassroomEntry(day, slotIndex).student_group }}
+                    </div>
+
+                    <div class="type">
+                      {{ getClassroomEntry(day, slotIndex).type }}
+                    </div>
+
+                    <div class="room">
+                      {{ getClassroomEntry(day, slotIndex).room }}
+                    </div>
+
                   </div>
 
-                  <div class="type">
-                    {{ entry.type }}
-                  </div>
+                </td>
 
-                  <div class="room">
-                    {{ entry.room }}
-                  </div>
-
-                </div>
-
-              </td>
+              </template>
 
             </tr>
 
           </tbody>
-
         </table>
       </section>
 
